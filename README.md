@@ -1,1049 +1,151 @@
-PIK - API
-====================
 
-## Requerimientos
+# Plantilla Backend – Django 5.2
 
-* Python 3.5+
-* Pip 3  
+Este proyecto es un esqueleto de backend basado en **Django 5.2** y **Django REST Framework**, pensado para integrarse con frontends modernos desarrollados en Angular 16.2.16 o cualquier otro framework de tu elección. Sirve como base para construir APIs REST robustas y escalables.
 
-- - -
+## Requisitos del entorno
 
-## Ambientación
+- **Python 3.12.1** o superior (instalado y accesible en tu `PATH`).
+- **pip** actualizado (`python -m pip install --upgrade pip`).
+- **MySQL 5.7+** o **MariaDB 10+** con un usuario y base de datos disponibles.
+- **Node 18.19.0**, **npm 10.2.3** y **Angular 16.2.16** (solo si vas a trabajar en el frontend; no son necesarios para el backend).
+- Acceso opcional a **Google Cloud Storage** si vas a usar almacenamiento de archivos en la nube.
+- **Google Cloud SDK** (`gcloud`) configurado para desplegar en App Engine.
 
-1. Install Python 3.5+
+## Instalación y configuración
 
-2. Install Pip 3
+### 1. Clona el repositorio
 
-3. Install virtualenv  
-Se usa para crear ambientes virtuales y ejecutar la versión de Python requerida
+```bash
+git clone https://github.com/jovas-007/plantilla_backend.git
+cd plantilla_backend
+```
 
-4. Clonar el proyecto  
+### 2. Crea y activa un entorno virtual
 
-5. Activar el ambiente virtual  
-$ source env/bin/activate
-  Windows:
-C:/path_to_the_folder/> env/Project_name/Scripts/activate.bat
+```bash
+python3.12 -m venv venv
+# Linux/Mac
+source venv/bin/activate
+# Windows
+venv\Scripts\activate
+```
 
-6. Instalar las librerías requeridas por el proyecto  
-$ pip3 install -r requirements.txt
+### 3. Instala las dependencias
 
-7. Configurar conexión a base de datos (MySQL)  
-/consultorio_api/my.cnf
+Asegúrate de que `pip` está actualizado y ejecuta:
 
-8. Crear la base de datos y aplicar las migraciones  
-$ python3 manage.py makemigrations consultorio_api  
-$ python3 manage.py migrate  
+```bash
+pip install --upgrade pip
+pip install -r requirements.txt
+```
 
+El archivo `requirements.txt` incluye las siguientes bibliotecas:
 
-9. Cargar todos los fixtures en el orden en que están numerados. Ejemplo:  
-$ ./manage.py loaddata fixtures/1initial_data.json
-$ ./manage.py loaddata fixtures/2authgroup.json
-$ ./manage.py loaddata fixtures/3user.json
-etc..
+- Django >= 5.2.5
+- djangorestframework >= 3.16.1
+- django-filter >= 25.1
+- django-cors-headers >= 4.7.0
+- pymysql >= 1.1
+- requests >= 2.32
+- cryptography >= 42.0
+- google-cloud-storage >= 2.15
+- python-dateutil >= 2.8.2
 
-10. Crear un django administrator (IMPORTANTE)  
-$ python3 manage.py createsuperuser --email admin@admin.com --username admin  
-(Console input) PASSWORD: XXXXXX
+> Nota: No utilizamos `mysqlclient`; `pymysql` se registra automáticamente como `MySQLdb` en `consultorio_api/__init__.py`.
 
-11. Correr el servidor  
- python3 manage.py runserver  
+### 4. Configura la base de datos
 
-IMPORTANT: Initial data, requiered for the project. Run once the database was created.
+El proyecto lee los parámetros de conexión de `my.cnf`, ubicado en la raíz. Puedes modificar este archivo para apuntar a tu servidor MySQL:
 
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  -
+```ini
+[client]
+user = tu_usuario
+password = tu_contraseña
+host = 127.0.0.1
+port = 3306
+database = nombre_de_tu_bd
+default-character-set = utf8mb4
+```
 
-## API Contract (postman)
+Alternativamente, puedes definir la conexión a través de variables de entorno y modificar `DATABASES` en `consultorio_api/settings.py` según tus necesidades.
 
-https://www.getpostman.com/collections/######################
+### 5. Ejecuta las migraciones
 
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  -
+```bash
+python manage.py migrate
+```
 
-## Despliegue en producción - Google App Engine
+Esto creará todas las tablas necesarias en tu base de datos.
 
-1. Generar los archivos estáticos de django (Solo se requiere en el primer deploy)  
-$ python3 manage.py collectstatic
+### 6. Crea un superusuario (opcional)
 
-2. Conectarse a la BD de prod mediante un proxy (Previamente instalar sdk de google cloud)    
-$ ./cloud_sql_proxy -instances="whatsoporte:us-west2:stgwhatsoport-mysql"=tcp:3307
+```bash
+python manage.py createsuperuser
+```
 
-3. Configurar en el archivo my.cnf la conexión hacia esta BD  
+Sigue las instrucciones para establecer nombre de usuario y contraseña. Podrás acceder al panel de administración en `/admin`.
 
-4. Aplicar las migraciones del proyecto
+### 7. Configura variables de entorno
 
-5. Configurar en el archivo settings.py la conexión a la BD de google cloud (esta comentada)  
+Para producción, **no** dejes la `SECRET_KEY` ni los parámetros sensibles en el código. Usa variables de entorno o un archivo `.env`. Algunos parámetros importantes:
 
-6. Ejecutar el comando de publicación  
-$ gcloud app deploy -v {ULTIMA_VERSION_DESPLEGADA}  
+- `DJANGO_SECRET_KEY`: clave secreta para Django.
+- `DJANGO_ALLOWED_HOSTS`: hosts permitidos separados por comas.
+- `DJANGO_DEBUG`: establece a `False` en producción.
+- `CORS_ALLOWED_ORIGINS`: lista de URLs permitidas para solicitudes CORS (p. ej., `http://localhost:4200`).
 
-7. En caso de haber desplegado el API en un nuevo App Engine, se requiere actualizar la URL del API en el servicio de Chat API  
-Este paso se requiere para que chat api pueda enviar los nuevos mensajes al web hook (link del nuevo API)
+Puedes cargar estas variables con python-decouple o tu gestor de configuración favorito.
 
-## JSONs dinamicos
+### 8. Lanza el servidor de desarrollo
 
-Muchas funcionalidades de Center residen en objetos JSON que se guardan como texto en la BD. Estos son:
+```bash
+python manage.py runserver 0.0.0.0:8000
+```
 
-# Eventos: Atributos y configuración principal del evento
+Accede a `http://localhost:8000/` para interactuar con la API.
 
-atributos_json: Lista los atributos visuales y de flujo de frontend del evento
-Ej:
-{
-	"website": "https://www.bim.mx/",
-	"icon_url": "https://cdnconventio.b-cdn.net/bim-foro-2021/assets/icono.png",
-	"logo": "https://cdnconventio.b-cdn.net/bim-foro-2021/assets/logo.png",
-	"color_primario": "#FFFFFF",
-	"color_secundario": "#FFFFFF",
-	"color_terciario": "#34B261",
-	"font_color_titulos": "#064442",
-	"font_name_titulos": "Montserrat",
-	"font_color_default": "#000000",
-	"boton_color_default": "#34B261",
-	"font_name_default": "Montserrat",
-	"menu_color": "#FFFFFF",
-	"registro":{
-		"bg": "https://cdnconventio.b-cdn.net/bim-foro-2021/assets/bg.jpg",
-		"cupo": 1000,
-		"dim_logo":{
-			"width": "80%",
-			"height": "60%"
-		}
-	},
-	"warmup":{
-		"loop": "https://cdnconventio.b-cdn.net/bim-foro-2021/videos/BIM_video_loop2.m4v"
-	},
-	"rutas":{
-		"entrypoint":"registro",
-		"pre_evento": {
-			"anonimo": "registro",
-			"usuario": "warm-up/loop"
-		},
-		"en_evento": {
-			"anonimo": "registro",
-			"usuario": "sala/foro"
-		},
-		"post_evento": "gracias"
-	}
-}
+## Características principales
 
-config_json: Contiene las llaves de configuracion especificas de un evento
-Ej:
-{
-	"dominio": "localhost",
-	"host_token": "host",
-	"enviar_confirmacion_registro": true,
-	"email_from": "BIM Foro 2021 <info@conventio.co>",
-	"link_frontend": "http://bimforo2021.local:4200",
-	"requiere_invitacion": false,
-	"utc_gmt": "-6",
-	"twilio_account_sid": "AC1bd0ba400b2d64c2e5becdf9ed2524ba",
-	"twilio_auth_token": "99f637b75c63789cadce3d4adc87a5ca",
-	"twilio_api_key": "SKad01c6e38694803bbb7e8d74d2020444",
-	"twilio_api_secret": "QxhzBRSdUBEBu3sy4CLsUydIkW7biyTW",
-	"twilio_service_sid": "ISd12c72a5a8154399b006aea6e760db28"
-}
+- **Autenticación con tokens** propia (`consultorio_api.models.BearerTokenAuthentication`) y soporte opcional de `rest_framework.authtoken`.
+- **API REST** con vistas genéricas y serializadores listos para extender.
+- **Gestión de usuarios y perfiles**: creación de usuarios, asignación de grupos y perfiles asociados.
+- **CORS configurado** con `django-cors-headers` para permitir solicitudes desde frontends externos.
+- **Soporte para almacenamiento en Google Cloud Storage** mediante `google-cloud-storage`.
+- **Código modular**: utilidades para cifrado (`cypher_utils.py`), validación de archivos (`data_utils.py`) y envío de correos (`puentes/mail.py`).
 
-# SALAS: Cada sala tiene un contexto_json con los contenidos, como pueden ser:
-- Livestream via zoom
-{
-	"plataforma": "zoom",
-	"zoom":{
-		"meeting_id": 99362247830,
-		"meeting_password": "123456",
-		"api_key": "sl_qg_MrSB2RHcb8mT-QmQ",
-		"url": "https://zoom.bimforo2021.com.mx"
-	},
-	"saludo": "\u00a1Bienvenidos!",
-	"texto_boton_ingreso": "Ingresa al foro",
-	"chat": {
-		"activo": true,
-		"url": "https://chat.bimforo2021.com.mx"
-	},
-	"encuestas": false
-}
+## Despliegue en Google App Engine
 
-- Livestream via youtube live
-{
-	"plataforma": "youtube",
-	"youtube":{
-		"video_url": "https://www.youtube.com/embed/-hkmrxy-C8k?start=1469"
-	},
-	"instrucciones": "Puedes dar DOBLE CLICK en el video para verlo en pantalla completa",
-	"saludo": "\u00a1Bienvenidos!",
-	"texto_boton_ingreso": "Ingresa al auditorio",
-	"chat": {
-		"activo": false
-	},
-	"encuestas": false,
-	"interacciones": []
-}
+El archivo `app.yaml` incluye la configuración de despliegue:
 
-- Falso(s) en vivo
-{
-	"plataforma": "video",
-	"videos":[
-		{
-			"es_default": true,
-			"slug": "espanol",
-			"nombre": "Español",
-			"video_url": "https://cdnconventio.b-cdn.net/herbalife-seminario-2021/videos/falso_en_vivo_test.mp4",
-			"duracion_segundos": 1168,
-			"fecha_inicio": "2020-12-18 15:48:00 +0000",
-			"fecha_fin": "2020-12-18 16:00:00 +0000"
-		},
-		{
-			"slug": "english",
-			"nombre": "English",
-			"video_url": "https://cdnconventio.b-cdn.net/herbalife-seminario-2021/videos/falso_en_vivo_test_2.mp4",
-			"duracion_segundos": 1168,
-			"fecha_inicio": "2020-12-18 15:48:00 +0000",
-			"fecha_fin": "2020-12-18 16:00:00 +0000"
-		}
-	],
-	"saludo": "\u00a1Bienvenidos!",
-	"texto_boton_ingreso": "Ingresa al auditorio",
-	"chat": {
-		"activo": false
-	},
-	"encuestas": false,
-	"interacciones": []
-}
+```yaml
+service: default
+runtime: python312   # actualizado para Python 3.12
+instance_class: F2
+handlers:
+  - url: /static
+    static_dir: static/
+  - url: /.*
+    script: auto
+```
 
-# INTERACTIVOS: La tabla de interactivos tendrá una entrada por cada uno, y a su vez cada entrada su contexto_json con configuraciones de lógica y contenidos
-Los interactivos disponibles hasta ahora son:
+Para desplegar, asegúrate de tener instalado y autenticado el Google Cloud SDK:
 
-- Video post (subir imagen o video para recibir likes):
-{
-    "tipo_interactivo": "video_post",
-    "slug": "cadena_musical",
-    "nombre": "Cadena Musical 'Resistiré'",
-    "warmup": true,
-    "main": false,
-    "fecha_inicio": "2020-12-15 09:00",
-    "tutorial_url": "https://cdnconventio.b-cdn.net/cie-mensaje-2020/videos/RESISTIRE_CIE.mp4",
-    "icon":"https://cdnconventio.b-cdn.net/cie-mensaje-2020/assets/cadena_musical.png",
-    "instrucciones":{
-        "descripcion": "Sube una parte de la canción 'Resistiré' acompañada de elementos creativos.",
-        "links":[
-            {
-                "url": "https://open.spotify.com/album/5xl9aTPziZye5Jy5fGsyPh?si=Q7fvwVCTQW-MOQriyOL-FQ",
-                "descripcion": "Escúchala en Spotify"
-            },
-            {
-                "url": "https://music.apple.com/us/album/resistir%C3%A9-feat-aida-cuevas-arath-herce-axel-mu%C3%B1iz-belinda/1508030466",
-                "descripcion": "Escúchala en Apple Music"
-            },
-            {
-                "url": "https://www.youtube.com/watch?v=uBGlv05JUJI",
-                "descripcion": "Véla en Youtube"
-            }
-        ]
-    }
-}
+```bash
+gcloud app deploy --project tu-proyecto-gcp
+```
 
-- Adivina la canción (colaborativo, dos compiten por adivinar el nombre de una canción al escuchar el audio):
+Puedes personalizar la clase de instancia, el escalado y los buckets de GCS en función de tus necesidades.
 
-{
-        "tipo_interactivo": "adivina_cancion",
-        "slug": "adivina_cancion",
-        "nombre": "Adivina la canción",
-        "warmup": false,
-        "main": true,
-        "fecha_inicio": "2020-12-11 08:00",
-        "icon": "https://storage.googleapis.com/cocacola2020/assets/adivina_cancion_icon.png",
-        "max_jugadores": 2,
-        "canciones": [
-            {
-                "id": 1,
-                "audio": "https://storage.googleapis.com/cocacola2020/adivina_cancion/Maluma_Hawai(Version_con_cantante)_10431219.mp3",
-                "opciones": [
-                    {
-                        "id": 1,
-                        "nombre": "Hawái",
-                        "isCorrect": true,
-                        "puntos": 100
-                    },
-                    {
-                        "id": 2,
-                        "nombre": "No Hay Nadie Más ",
-                        "isCorrect": false
-                    },
-                    {
-                        "id": 3,
-                        "nombre": "Caramelo",
-                        "isCorrect": false
-                    },
-                    {
-                        "id": 4,
-                        "nombre": "Crazy Little Thing Called Love",
-                        "isCorrect": false
-                    }
-                ]
-            }
-        ]
-}
+## Personalización
 
-- 100 mexicanos dijeron (colaborativo, dos compiten por adivinar qué contestaron más mexicanos a cierta pregunta):
+Esta plantilla está pensada para que la adaptes a tu propio frontend. Algunos puntos de extensión:
 
-{
-    "tipo_interactivo": "100_mexicanos_dijeron",
-    "slug": "100_mexicanos_dijeron",
-    "nombre": "100 mexicanos dijeron",
-    "warmup": false,
-    "main": true,
-    "fecha_inicio": "2020-12-11 08:00",
-    "icon": "https://storage.googleapis.com/cocacola2020/assets/100_mexicanos_dijeron_icon.png",
-    "max_jugadores": 2,
-    "preguntas": [
-        {
-            "id": 1,
-            "pregunta": "Menciona algo opuesto a la libertad",
-            "opciones": [
-                {
-                    "id": 1,
-                    "nombre": "Esclavitud",
-                    "show": false,
-                    "puntos": 40
-                },
-                {
-                    "id": 2,
-                    "nombre": "Encierro",
-                    "show": false,
-                    "puntos": 30
-                },
-                {
-                    "id": 3,
-                    "nombre": "Prisión",
-                    "show": false,
-                    "puntos": 20
-                },
-                {
-                    "id": 4,
-                    "nombre": "Opresión",
-                    "show": false,
-                    "puntos": 10
-                }
-            ],
-            "respuestas": [
-                {
-                    "id": 1,
-                    "nombre": "Esclavitud",
-                    "correcta": true,
-                    "active": true
-                },
-                {
-                    "id": 2,
-                    "nombre": "Encierro",
-                    "correcta": true,
-                    "active": true
-                },
-                {
-                    "id": 3,
-                    "nombre": "Prisión",
-                    "correcta": true,
-                    "active": true
-                },
-                {
-                    "id": 4,
-                    "nombre": "Opresión",
-                    "correcta": true,
-                    "active": true
-                },
-                {
-                    "id": 5,
-                    "nombre": "Independencia",
-                    "correcta": false,
-                    "active": true
-                },
-                {
-                    "id": 6,
-                    "nombre": "Liberación",
-                    "correcta": false,
-                    "active": true
-                },
-                {
-                    "id": 7,
-                    "nombre": "Libramiento",
-                    "correcta": false,
-                    "active": true
-                },
-                {
-                    "id": 8,
-                    "nombre": "Emancipación",
-                    "correcta": false,
-                    "active": true
-                },
-                {
-                    "id": 9,
-                    "nombre": "Dominio",
-                    "correcta": false,
-                    "active": true
-                },
-                {
-                    "id": 10,
-                    "nombre": "Sometimiento",
-                    "correcta": false,
-                    "active": true
-                },
-                {
-                    "id": 11,
-                    "nombre": "Servidumbre",
-                    "correcta": false,
-                    "active": true
-                },
-                {
-                    "id": 12,
-                    "nombre": "Dependencia",
-                    "correcta": false,
-                    "active": true
-                }
-            ]
-        }
-    ]
-}
+- Crea nuevos `serializers` en `consultorio_api/serializers.py` para tus modelos.
+- Añade vistas en `consultorio_api/views/` siguiendo el patrón de DRF (clases basadas en vistas o viewsets).
+- Configura permisos personalizados en `REST_FRAMEWORK` según tus reglas de negocio.
+- Modifica `CORS_ALLOWED_ORIGINS` para autorizar el dominio de tu frontend de producción.
 
-# Encuestas: Se lanzan a una sala en tiempo real
+## Contribuciones y soporte
 
-{
-	"pregunta": "\u00bfQu\u00e9 canci\u00f3n de Sebastian Yatra quieres escuchar?",
-	"opciones": [{
-		"opcion": "1",
-		"texto": "Traicionera"
-	}, {
-		"opcion": "2",
-		"texto": "Te vas"
-	}, {
-		"opcion": "3",
-		"texto": "Despecho"
-	}, {
-		"opcion": "4",
-		"texto": "El amor"
-	}]
-}
-
-
-## JSON del POSTMAN (API spec)
-
-{
-	"info": {
-		"_postman_id": "fd02ab4a-3190-41f7-89db-81647e4ee7ab",
-		"name": "Center API",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-	},
-	"item": [
-		{
-			"name": "Auth",
-			"item": [
-				{
-					"name": "Login con permalink",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "formdata",
-							"formdata": []
-						},
-						"url": {
-							"raw": "{{http}}://{{host}}/token/permalink/VSYP5350/bim-foro-2021",
-							"protocol": "{{http}}",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"token",
-								"permalink",
-								"VSYP5350",
-								"bim-foro-2021"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Login con acceso unico y dominio",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "formdata",
-							"formdata": []
-						},
-						"url": {
-							"raw": "{{http}}://{{host}}/token/acceso_unico/HOZV4715?dominio=localhost",
-							"protocol": "{{http}}",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"token",
-								"acceso_unico",
-								"HOZV4715"
-							],
-							"query": [
-								{
-									"key": "dominio",
-									"value": "localhost"
-								}
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "HOST",
-			"item": [
-				{
-					"name": "Purgar cache de un evento",
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "POST",
-						"header": [],
-						"url": {
-							"raw": "{{http}}://{{host}}/host/evento/herbalife-seminario-2021/cache/{{host_token}}",
-							"protocol": "{{http}}",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"host",
-								"evento",
-								"herbalife-seminario-2021",
-								"cache",
-								"{{host_token}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Apagar/prender interacciones de una sala",
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{http}}://{{host}}/host/salas/1/interaccion/control/host",
-							"protocol": "{{http}}",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"host",
-								"salas",
-								"1",
-								"interaccion",
-								"control",
-								"host"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Eventos",
-			"item": [
-				{
-					"name": "Obtener el detalle de un evento",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{http}}://{{host}}/eventos/bim-foro-2021",
-							"protocol": "{{http}}",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"eventos",
-								"bim-foro-2021"
-							],
-							"query": [
-								{
-									"key": "tyco",
-									"value": "1",
-									"disabled": true
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Obtener el aforo actual de un evento",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{http}}://{{host}}/eventos/bim-foro-2021/aforo",
-							"protocol": "{{http}}",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"eventos",
-								"bim-foro-2021",
-								"aforo"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Chat",
-			"item": [
-				{
-					"name": "Obtener signature del chat",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"id_user\": 261\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{http}}://{{host}}/chat/bim-foro-2021/signature",
-							"protocol": "{{http}}",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"chat",
-								"bim-foro-2021",
-								"signature"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Registro",
-			"item": [
-				{
-					"name": "Registrarse para un evento",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "nombre_completo",
-									"value": "Felix 501",
-									"type": "text"
-								},
-								{
-									"key": "email",
-									"value": "felix+501@inflexionsoftware.com",
-									"type": "text"
-								},
-								{
-									"key": "foto_perfil",
-									"value": null,
-									"type": "file",
-									"disabled": true
-								},
-								{
-									"key": "perfil_contexto_json",
-									"value": "{}",
-									"type": "text"
-								}
-							]
-						},
-						"url": {
-							"raw": "{{http}}://{{host}}/usuarios/registro/bim-foro-2021",
-							"protocol": "{{http}}",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"usuarios",
-								"registro",
-								"bim-foro-2021"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Registro masivo (excel) a un evento",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "token",
-									"value": "jgk78shdjngftiao34_jek$!!jks",
-									"type": "text"
-								},
-								{
-									"key": "usuarios",
-									"value": null,
-									"type": "file"
-								}
-							]
-						},
-						"url": {
-							"raw": "{{http}}://{{host}}/registro/masivo/herbalife-seminario-2021",
-							"protocol": "{{http}}",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"registro",
-								"masivo",
-								"herbalife-seminario-2021"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Envio masivo (invitaciones) de un evento",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "token",
-									"value": "jgk78shdjngftiao34_jek$!!jks",
-									"type": "text"
-								},
-								{
-									"key": "usuarios",
-									"value": null,
-									"type": "file"
-								},
-								{
-									"key": "tipo_envio",
-									"value": "invitacion_registro",
-									"type": "text"
-								},
-								{
-									"key": "email_bcc",
-									"value": "berliner@inflexionsoftware.com",
-									"type": "text",
-									"disabled": true
-								},
-								{
-									"key": "subject",
-									"value": "Mensaje de Fin de Año CIE 2020",
-									"type": "text"
-								}
-							],
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{http}}://{{host}}/registro/envios/cie-mensaje-2020",
-							"protocol": "{{http}}",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"registro",
-								"envios",
-								"cie-mensaje-2020"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Me",
-			"item": [
-				{
-					"name": "Obtener mi info (del usuario logeado)",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{http}}://{{host}}/me/bim-foro-2021",
-							"protocol": "{{http}}",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"me",
-								"bim-foro-2021"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Aprobar/agregar un dispositivo para un usuario",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"sistema_operativo\": \"MacOS\",\n    \"navegador\": \"Chrome\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{http}}://{{host}}/me/cocacola2020/dispositivo",
-							"protocol": "{{http}}",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"me",
-								"cocacola2020",
-								"dispositivo"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Salas",
-			"item": [
-				{
-					"name": "Obtener detalle de una sala por slug",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{http}}://{{host}}/eventos/herbalife-seminario-2021/salas/seminario",
-							"protocol": "{{http}}",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"eventos",
-								"herbalife-seminario-2021",
-								"salas",
-								"seminario"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Notificaciones",
-			"item": [
-				{
-					"name": "Envio masivo de mails para usuarios de un evento",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "tipo_envio",
-									"value": "recordatorio_evento_rappi_1",
-									"type": "text"
-								},
-								{
-									"key": "usuarios",
-									"value": null,
-									"type": "file"
-								},
-								{
-									"key": "email_bcc",
-									"value": "",
-									"type": "text",
-									"disabled": true
-								},
-								{
-									"key": "subject",
-									"value": "¡Hoy es la Posada!",
-									"type": "text"
-								},
-								{
-									"key": "token",
-									"value": "jgk78shdjngftiao34_jek$!!jks",
-									"type": "text"
-								}
-							]
-						},
-						"url": {
-							"raw": "{{http}}://{{host}}/eventos/cocacola2020/notificaciones/mail/masiva",
-							"protocol": "{{http}}",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"eventos",
-								"cocacola2020",
-								"notificaciones",
-								"mail",
-								"masiva"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Envio de notificaciones a invitados de un evento (socket)",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"token\": \"8541b36390ddae8519d7752d1c9ac09e\",\n    \"message\":{\n        \"tipo\": \"mensaje\",\n        \"mensaje\": \"Amigo?\"\n    }\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "http://127.0.0.1:8080/messages/cocacola2020_notificaciones",
-							"protocol": "http",
-							"host": [
-								"127",
-								"0",
-								"0",
-								"1"
-							],
-							"port": "8080",
-							"path": [
-								"messages",
-								"cocacola2020_notificaciones"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Partidas",
-			"item": [
-				{
-					"name": "Iniciar una partida",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "PUT",
-						"header": [],
-						"url": {
-							"raw": "{{http}}://{{host}}/partidas/14/iniciar",
-							"protocol": "{{http}}",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"partidas",
-								"14",
-								"iniciar"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Registrar un evento (algo que paso) en una partida)",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"evento_partida\":{\n        \"tipo\": \"respuesta\",\n        \"usuario_id\": 1,\n        \"respuesta_id\": 1\n    }\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{http}}://{{host}}/partidas/10/evento",
-							"protocol": "{{http}}",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"partidas",
-								"10",
-								"evento"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		}
-	]
-}
+Este repositorio es mantenido internamente como plantilla de referencia. Si detectas errores o tienes sugerencias, abre un Issue o un Pull Request en GitHub. Para soporte interno, contacta con el equipo de desarrollo de backend de la BUAP.
